@@ -1,0 +1,75 @@
+version: "2"
+
+services:
+    postgres:
+        image: postgres:10
+        networks:
+            tomcat-keycloak:
+        environment:
+            POSTGRES_DB:       keycloak
+            POSTGRES_USER:     keycloak
+            POSTGRES_PASSWORD: password
+        volumes:
+            - tomcat-keycloak-pgdata:/var/lib/postgresql/data
+
+
+    nginx-proxy:
+        image: jwilder/nginx-proxy:alpine
+        networks:
+            tomcat-keycloak:
+        ports:
+            - "8080:80/tcp"
+        volumes:
+            - /var/run/docker.sock:/tmp/docker.sock:ro
+            - /usr/share/nginx/html
+            - /etc/nginx/certs
+            - /etc/nginx/conf.d
+            - /etc/nginx/vhost.d
+
+
+    keycloak:
+        image: jboss/keycloak
+        networks:
+            tomcat-keycloak:
+                aliases:
+                    - keycloak.site.example.com
+        environment:
+            PATH:              /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/jboss/keycloak/bin
+            VIRTUAL_HOST:      keycloak.site.example.com
+            DB_DATABASE:       keycloak
+            DB_USER:           keycloak
+            DB_PASSWORD:       password
+            DB_VENDOR:         postgres
+            DB_ADDR:           postgres
+            KEYCLOAK_USER:     keycloak
+            KEYCLOAK_PASSWORD: keycloak
+        depends_on:
+            - postgres
+            - nginx-proxy
+
+
+    tomcat:
+        image: tomcat:8.5-jre10-keycloak
+        build:
+            context: .
+            dockerfile: Dockerfile
+        networks:
+            tomcat-keycloak:
+                aliases:
+                    - tomcat.site.example.com
+        volumes:
+            - ./data/tomcat/webapps/:/usr/local/tomcat/webapps/
+        environment:
+            VIRTUAL_HOST: tomcat.site.example.com
+        depends_on:
+            - keycloak
+            - nginx-proxy
+
+
+networks:
+    tomcat-keycloak:
+
+
+volumes:
+    tomcat-keycloak-pgdata:
+        external: true

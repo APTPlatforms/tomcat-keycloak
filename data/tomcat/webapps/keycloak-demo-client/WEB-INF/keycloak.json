@@ -1,0 +1,8 @@
+{
+  "realm": "tomcat-keycloak",
+  "auth-server-url": "http://keycloak.site.example.com:8080/auth",
+  "ssl-required": "external",
+  "resource": "keycloak-demo-client",
+  "public-client": true,
+  "confidential-port": 0
+}

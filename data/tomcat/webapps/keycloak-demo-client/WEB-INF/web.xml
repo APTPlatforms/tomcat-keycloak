@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<web-app xmlns="http://java.sun.com/xml/ns/j2ee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd"
+    version="2.4">
+  <display-name>KEYCLOAK</display-name>
+  <description>KEYCLOAK TEST APP</description>
+  <!-- Security -->
+  <!-- Define a minimum constraint to restrict access to /roles/* -->
+  <security-constraint>
+    <display-name>Security constraint for the /roles folder</display-name>
+    <web-resource-collection>
+      <web-resource-name>Role Pages</web-resource-name>
+      <url-pattern>/roles/*</url-pattern>
+    </web-resource-collection>
+    <!-- Only test roles can access this area -->
+    <auth-constraint>
+      <role-name>role0</role-name>
+    </auth-constraint>
+  </security-constraint>
+  <!-- Define a role0 constraint to restrict access to /roles/role0.jsp -->
+  <security-constraint>
+    <display-name>Security constraint for the /roles folder</display-name>
+    <web-resource-collection>
+      <web-resource-name>Role Pages</web-resource-name>
+      <url-pattern>/roles/role0.html</url-pattern>
+    </web-resource-collection>
+    <!-- Only role0 users can access this area -->
+    <auth-constraint>
+      <role-name>role0</role-name>
+    </auth-constraint>
+  </security-constraint>
+  <!-- Define a role1 constraint to restrict access to /roles/role1.jsp -->
+  <security-constraint>
+    <display-name>Security constraint for the /roles folder</display-name>
+    <web-resource-collection>
+      <web-resource-name>Role1 Pages</web-resource-name>
+      <url-pattern>/roles/role1.html</url-pattern>
+    </web-resource-collection>
+    <!-- Only role1 users can access this area -->
+    <auth-constraint>
+      <role-name>role1</role-name>
+    </auth-constraint>
+  </security-constraint>
+  <!-- Define a role2 constraint to restrict access to /roles/role2.jsp -->
+  <security-constraint>
+    <display-name>Security constraint for the /roles folder</display-name>
+    <web-resource-collection>
+      <web-resource-name>Role2 Pages</web-resource-name>
+      <url-pattern>/roles/role2.html</url-pattern>
+    </web-resource-collection>
+    <!-- Only role2 users can access this area -->
+    <auth-constraint>
+      <role-name>role2</role-name>
+    </auth-constraint>
+  </security-constraint>
+  <login-config>
+    <auth-method>KEYCLOAK</auth-method>
+    <!-- Tell Tomcat we want to use Keycloak -->
+    <realm-name>this is ignored currently</realm-name>
+  </login-config>
+</web-app>
