@@ -30,7 +30,8 @@ Procedure
 
   .. code:: console
 
-    docker volume create --name=tomcat-keycloak-pgdata
+    docker volume create --name=mysql-data
+    docker volume create --name=wordpress-data
 
 * Start Keycloak server. Should take 20-30 seconds.
 
@@ -62,10 +63,10 @@ Procedure
 
     docker-compose exec keycloak kcadm.sh create clients \
       -r tomcat-keycloak \
-      -s clientId=keycloak-demo-client \
+      -s clientId=tomcat-client \
       -s publicClient=true \
       -s directAccessGrantsEnabled=true \
-      -s 'rootUrl=http://tomcat.site.example.com:8080/keycloak-demo-client' \
+      -s 'rootUrl=http://tomcat.site.example.com:8080/tomcat-client' \
       -s 'redirectUris=[ "/roles/*", "/index.html", "/" ]' \
       -i
 
@@ -98,9 +99,9 @@ Procedure
 
   .. code:: console
 
-    docker-compose up -d tomcat
+    docker-compose up -d tomcat wordpress
 
-* Open your browser to `Tomcat Site`_
+* Open your browser to `Tomcat Site`_ and `WordPress Site`_
 
 Things to Note
 --------------
@@ -114,9 +115,10 @@ Things to Note
   day.
 
 * Of course I included a script to do all of the commands for you, but where's
-  the fun in that? ``./build.sh`` if you're so inclined.
+  the fun in that? ``./deploy.sh`` if you're so inclined.
 
-.. _Tomcat Site: http://tomcat.site.example.com:8080/keycloak-demo-client/
+.. _Tomcat Site: http://tomcat.site.example.com:8080/tomcat-client/
+.. _WordPress Site: http://wordpress.site.example.com:8080/
 .. _docker-compose: https://docs.docker.com/compose/install/
 .. _Docker: https://www.docker.com/
 .. _Guide: https://cbfiles.blob.core.windows.net/docs/AGuideforsettingupTomcatwithaStandaloneKeycloakAuthenticationServer.pdf

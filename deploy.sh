@@ -1,10 +1,23 @@
 #!/bin/sh
 
-docker volume create --name=tomcat-keycloak-pgdata
+docker-compose down
+
+docker volume rm mysql-data
+docker volume rm wordpress-data
+
+docker volume create --name=mysql-data
+docker volume create --name=wordpress-data
 
 docker-compose up -d keycloak
 
-sleep 30
+printf 'Waiting for Keycloak to come online'
+while :
+do
+    docker-compose logs keycloak 2>&1 | grep -q -E 'Keycloak\s.*started in\s\d+ms' && break
+    printf '.'
+    sleep 1
+done
+echo
 
 docker-compose exec keycloak kcadm.sh config credentials \
   --server http://localhost:8080/auth --realm master \
@@ -15,10 +28,10 @@ docker-compose exec keycloak kcadm.sh create realms \
 
 docker-compose exec keycloak kcadm.sh create clients \
   -r tomcat-keycloak \
-  -s clientId=keycloak-demo-client \
+  -s clientId=tomcat-client \
   -s publicClient=true \
   -s directAccessGrantsEnabled=true \
-  -s 'rootUrl=http://tomcat.site.example.com:8080/keycloak-demo-client' \
+  -s 'rootUrl=http://tomcat.site.example.com:8080/tomcat-client' \
   -s 'redirectUris=[ "/roles/*", "/index.html", "/" ]' \
   -i
 
@@ -38,8 +51,12 @@ docker-compose exec keycloak kcadm.sh add-roles -r tomcat-keycloak --uusername=t
 
 docker-compose exec keycloak kcadm.sh add-roles -r tomcat-keycloak --uusername=tester --rolename role1
 
-docker-compose up -d tomcat
+docker-compose up -d tomcat wordpress
 
 sleep 20
 
-echo "Go here!  http://tomcat.site.example.com:8080/keycloak-demo-client/"
+cat <<_EOT_
+Links:
+  http://tomcat.site.example.com:8080/tomcat-client/
+  http://wordpress.site.example.com:8080/
+_EOT_

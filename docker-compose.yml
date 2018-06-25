@@ -1,18 +1,7 @@
-version: "2"
+version: "3.4"
+
 
 services:
-    postgres:
-        image: postgres:10
-        networks:
-            tomcat-keycloak:
-        environment:
-            POSTGRES_DB:       keycloak
-            POSTGRES_USER:     keycloak
-            POSTGRES_PASSWORD: password
-        volumes:
-            - tomcat-keycloak-pgdata:/var/lib/postgresql/data
-
-
     nginx-proxy:
         image: jwilder/nginx-proxy:alpine
         networks:
@@ -28,7 +17,7 @@ services:
 
 
     keycloak:
-        image: jboss/keycloak
+        image: jboss/keycloak:${KEYCLOAK_VERSION}
         networks:
             tomcat-keycloak:
                 aliases:
@@ -36,23 +25,25 @@ services:
         environment:
             PATH:              /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/jboss/keycloak/bin
             VIRTUAL_HOST:      keycloak.site.example.com
-            DB_DATABASE:       keycloak
-            DB_USER:           keycloak
-            DB_PASSWORD:       password
-            DB_VENDOR:         postgres
-            DB_ADDR:           postgres
+            DB_DATABASE:       ${DB_DATABASE}
+            DB_USER:           ${DB_USER}
+            DB_PASSWORD:       ${DB_PASSWORD}
+            DB_VENDOR:         mysql
+            DB_ADDR:           mysql
             KEYCLOAK_USER:     keycloak
             KEYCLOAK_PASSWORD: keycloak
         depends_on:
-            - postgres
+            - mysql
             - nginx-proxy
 
 
     tomcat:
         image: tomcat:8.5-jre10-keycloak
         build:
-            context: .
-            dockerfile: Dockerfile
+            context: build
+            dockerfile: tomcat.Dockerfile
+            args:
+                - KEYCLOAK_VERSION=${KEYCLOAK_VERSION}
         networks:
             tomcat-keycloak:
                 aliases:
@@ -66,10 +57,53 @@ services:
             - nginx-proxy
 
 
+    wordpress:
+        image: wordpress:4-apache
+        networks:
+            tomcat-keycloak:
+                aliases:
+                    - wordpress.site.example.com
+        environment:
+            VIRTUAL_HOST:          wordpress.site.example.com
+            VIRTUAL_PROTO:         http
+            WORDPRESS_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+            WORDPRESS_DB_NAME:     wp-keycloak
+            WORDPRESS_DB_HOST:     mysql
+        volumes:
+            - ./data/wordpress-common/usr/local/etc/php/conf.d/wordpress.ini:/usr/local/etc/php/conf.d/wordpress.ini:ro
+            - wordpress-data:/var/www/html
+        depends_on:
+            - mysql
+
+
+    wp-cli:
+        restart: "no"
+        image: wordpress:cli
+        networks:
+            tomcat-keycloak:
+        volumes:
+            - wordpress-data:/var/www/html
+
+
+    mysql:
+        image: mysql:5.7
+        networks:
+            tomcat-keycloak:
+        environment:
+            MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+            MYSQL_DATABASE:      ${DB_DATABASE}
+            MYSQL_USER:          ${DB_USER}
+            MYSQL_PASSWORD:      ${DB_PASSWORD}
+        volumes:
+            - mysql-data:/var/lib/mysql
+
+
 networks:
     tomcat-keycloak:
 
 
 volumes:
-    tomcat-keycloak-pgdata:
+    mysql-data:
+        external: true
+    wordpress-data:
         external: true
