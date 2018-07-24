@@ -13,7 +13,7 @@ docker-compose up -d keycloak
 printf 'Waiting for Keycloak to come online'
 while :
 do
-    docker-compose logs keycloak 2>&1 | grep -q -E 'Keycloak\s.*started in\s\d+ms' && break
+    docker-compose logs keycloak 2>&1 | grep -q -F 'WFLYSRV0051: Admin console listening on http' && break
     printf '.'
     sleep 1
 done
