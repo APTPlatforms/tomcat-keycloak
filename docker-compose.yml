@@ -30,6 +30,7 @@ services:
             DB_PASSWORD:       ${DB_PASSWORD}
             DB_VENDOR:         mysql
             DB_ADDR:           mysql
+            JDBC_PARAMS:       useSSL=false
             KEYCLOAK_USER:     keycloak
             KEYCLOAK_PASSWORD: keycloak
         depends_on:
