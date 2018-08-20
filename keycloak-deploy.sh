@@ -1,13 +1,5 @@
 #!/bin/sh
 
-docker-compose down
-
-docker volume rm mysql-data
-docker volume rm wordpress-data
-
-docker volume create --name=mysql-data
-docker volume create --name=wordpress-data
-
 docker-compose up -d keycloak
 
 printf 'Waiting for Keycloak to come online'
@@ -21,7 +13,7 @@ echo
 
 docker-compose exec keycloak kcadm.sh config credentials \
   --server http://localhost:8080/auth --realm master \
-  --user keycloak --password keycloak
+  --user keycloak --password password
 
 docker-compose exec keycloak kcadm.sh create realms \
   -s realm=tomcat-keycloak -s enabled=true -o
@@ -31,7 +23,7 @@ docker-compose exec keycloak kcadm.sh create clients \
   -s clientId=tomcat-client \
   -s publicClient=true \
   -s directAccessGrantsEnabled=true \
-  -s 'rootUrl=http://tomcat.site.example.com:8080/tomcat-client' \
+  -s 'rootUrl=https://tomcat.sofn.aptplatforms.com/tomcat-client' \
   -s 'redirectUris=[ "/roles/*", "/index.html", "/" ]' \
   -i
 
@@ -50,13 +42,3 @@ docker-compose exec keycloak kcadm.sh create roles -r tomcat-keycloak -s name=ro
 docker-compose exec keycloak kcadm.sh add-roles -r tomcat-keycloak --uusername=tester --rolename role0
 
 docker-compose exec keycloak kcadm.sh add-roles -r tomcat-keycloak --uusername=tester --rolename role1
-
-docker-compose up -d tomcat wordpress
-
-sleep 20
-
-cat <<_EOT_
-Links:
-  http://tomcat.site.example.com:8080/tomcat-client/
-  http://wordpress.site.example.com:8080/
-_EOT_

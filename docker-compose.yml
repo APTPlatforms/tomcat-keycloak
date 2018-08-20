@@ -1,110 +1,109 @@
-version: "3.4"
-
+version: "3.6"
 
 services:
-    nginx-proxy:
-        image: jwilder/nginx-proxy:alpine
-        networks:
-            tomcat-keycloak:
-        ports:
-            - "8080:80/tcp"
-        volumes:
-            - /var/run/docker.sock:/tmp/docker.sock:ro
-            - /usr/share/nginx/html
-            - /etc/nginx/certs
-            - /etc/nginx/conf.d
-            - /etc/nginx/vhost.d
+  traefik:
+    image: traefik:1.6-alpine
+    container_name: traefik
+    restart: ${RESTART_MODE}
+    ports:
+      - "80:80"
+      - "443:443"
+    labels:
+      - traefik.enable=true
+      - traefik.frontend.rule=Host:traefik.${DOMAIN}
+      - traefik.port=8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.toml:/traefik.toml:ro
+      - ./traefik/acme:/etc/traefik/acme
 
+  wordpress:
+    image: wordpress:4-apache
+    restart: ${RESTART_MODE}
+    labels:
+      - traefik.enable=true
+      - traefik.port=80
+      - traefik.frontend.rule=Host:wordpress.${DOMAIN}
+    depends_on:
+      - mysql
+    volumes:
+      - ./conf/wordpress.ini:/usr/local/etc/php/conf.d/wordpress.ini:ro
+      - wordpress-data:/var/www/html
+    environment:
+      WORDPRESS_DB_HOST:     ${WORDPRESS_DB_HOST}
+      WORDPRESS_DB_NAME:     ${WORDPRESS_DB_NAME}
+      WORDPRESS_DB_USER:     ${WORDPRESS_DB_USER}
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
 
-    keycloak:
-        image: jboss/keycloak:${KEYCLOAK_VERSION}
-        networks:
-            tomcat-keycloak:
-                aliases:
-                    - keycloak.site.example.com
-        environment:
-            PATH:              /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/jboss/keycloak/bin
-            VIRTUAL_HOST:      keycloak.site.example.com
-            DB_DATABASE:       ${DB_DATABASE}
-            DB_USER:           ${DB_USER}
-            DB_PASSWORD:       ${DB_PASSWORD}
-            DB_VENDOR:         mysql
-            DB_ADDR:           mysql
-            JDBC_PARAMS:       useSSL=false
-            KEYCLOAK_USER:     keycloak
-            KEYCLOAK_PASSWORD: keycloak
-        depends_on:
-            - mysql
-            - nginx-proxy
+  wp-cli:
+    restart: "no"
+    image: wordpress:cli
+    volumes:
+      - wordpress-data:/var/www/html
+    user: "33"
 
+  tomcat:
+    image: tomcat:8.5-alpine-keycloak
+    restart: ${RESTART_MODE}
+    labels:
+      - traefik.enable=true
+      - traefik.port=8080
+      - traefik.frontend.rule=Host:tomcat.${DOMAIN}
+    build:
+      context: ./tomcat/build
+      args:
+        - KEYCLOAK_VERSION=${KEYCLOAK_VERSION}
+    volumes:
+        - ./tomcat/webapps/:/usr/local/tomcat/webapps/
+        - ./tomcat/conf/server.xml:/usr/local/tomcat/conf/server.xml
 
-    tomcat:
-        image: tomcat:8.5-jre10-keycloak
-        build:
-            context: build
-            dockerfile: tomcat.Dockerfile
-            args:
-                - KEYCLOAK_VERSION=${KEYCLOAK_VERSION}
-        networks:
-            tomcat-keycloak:
-                aliases:
-                    - tomcat.site.example.com
-        volumes:
-            - ./data/tomcat/webapps/:/usr/local/tomcat/webapps/
-        environment:
-            VIRTUAL_HOST: tomcat.site.example.com
-        depends_on:
-            - keycloak
-            - nginx-proxy
+  keycloak:
+    image: jboss/keycloak:${KEYCLOAK_VERSION}
+    restart: ${RESTART_MODE}
+    labels:
+      - traefik.enable=true
+      - traefik.port=8080
+      - traefik.frontend.rule=Host:keycloak.${DOMAIN}
+    depends_on:
+      - mysql
+    environment:
+      PATH:                     /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/jboss/keycloak/bin
+      DB_ADDR:                  ${KEYCLOAK_DB_HOST}
+      DB_DATABASE:              ${KEYCLOAK_DB_NAME}
+      DB_USER:                  ${KEYCLOAK_DB_USER}
+      DB_PASSWORD:              ${KEYCLOAK_DB_PASSWORD}
+      DB_VENDOR:                ${KEYCLOAK_DB_VENDOR}
+      JDBC_PARAMS:              useSSL=false
+      PROXY_ADDRESS_FORWARDING: "true"
+      KEYCLOAK_USER:            ${KEYCLOAK_USER}
+      KEYCLOAK_PASSWORD:        ${KEYCLOAK_PASSWORD}
 
+  mysql:
+    restart: ${RESTART_MODE}
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
 
-    wordpress:
-        image: wordpress:4-apache
-        networks:
-            tomcat-keycloak:
-                aliases:
-                    - wordpress.site.example.com
-        environment:
-            VIRTUAL_HOST:          wordpress.site.example.com
-            VIRTUAL_PROTO:         http
-            WORDPRESS_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-            WORDPRESS_DB_NAME:     wp-keycloak
-            WORDPRESS_DB_HOST:     mysql
-        volumes:
-            - ./data/wordpress-common/usr/local/etc/php/conf.d/wordpress.ini:/usr/local/etc/php/conf.d/wordpress.ini:ro
-            - wordpress-data:/var/www/html
-        depends_on:
-            - mysql
-
-
-    wp-cli:
-        restart: "no"
-        image: wordpress:cli
-        networks:
-            tomcat-keycloak:
-        volumes:
-            - wordpress-data:/var/www/html
-
-
-    mysql:
-        image: mysql:5.7
-        networks:
-            tomcat-keycloak:
-        environment:
-            MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-            MYSQL_DATABASE:      ${DB_DATABASE}
-            MYSQL_USER:          ${DB_USER}
-            MYSQL_PASSWORD:      ${DB_PASSWORD}
-        volumes:
-            - mysql-data:/var/lib/mysql
-
-
-networks:
-    tomcat-keycloak:
-
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: phpmyadmin
+    restart: "no"
+    labels:
+      - traefik.enable=true
+      - traefik.port=80
+      - traefik.frontend.rule=Host:mysql.${DOMAIN}
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST:         mysql
+      PMA_ABSOLUTE_URI: https://mysql.${DOMAIN}
 
 volumes:
-    mysql-data:
-        external: true
-    wordpress-data:
-        external: true
+  mysql-data:
+    external: true
+  wordpress-data:
+    external: true
+
+# vim: set ts=2 sw=2 sts=2 expandtab :

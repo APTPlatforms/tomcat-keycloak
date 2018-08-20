@@ -1,6 +1,6 @@
 {
   "realm": "tomcat-keycloak",
-  "auth-server-url": "http://keycloak.site.example.com:8080/auth",
+  "auth-server-url": "https://keycloak.sofn.aptplatforms.com/auth",
   "ssl-required": "external",
   "resource": "tomcat-client",
   "public-client": true,
